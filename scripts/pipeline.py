@@ -30,25 +30,23 @@ def extract_explanations(data):
         if explanations is None:
             explanations = []
             
-        all_feature_similarities = []
-        for explanation in explanations:
-            pairwise = explanation.get('pairwise_semantic_similarity', [])
-            if pairwise:
-                all_feature_similarities.extend([p['cosine_similarity'] for p in pairwise])
-        
-        feature_mean = np.mean(all_feature_similarities) if all_feature_similarities else 0.0
-        feature_var = np.var(all_feature_similarities) if all_feature_similarities else 0.0
-
         for expl_idx, explanation in enumerate(explanations):
             text = explanation['text']
             scores = explanation.get('scores', {})
+
+            pairwise = explanation.get('pairwise_semantic_similarity', [])
+            similarities = [p['cosine_similarity'] for p in pairwise] if pairwise else []
+            
+            explanation_mean = np.mean(similarities) if similarities else 0.0
+            explanation_var = np.var(similarities) if similarities else 0.0
+
             records.append({
                 'feature_id': feature_id,
                 'explanation_index': expl_idx,
                 'text': text,
                 'llm_explainer': explanation.get('llm_explainer', 'Unknown'),
-                'similarity_mean': float(feature_mean),
-                'similarity_var': float(feature_var),
+                'similarity_mean': float(explanation_mean),
+                'similarity_var': float(explanation_var),
                 'score_fuzz': scores.get('fuzz', 0),
                 'score_detection': scores.get('detection', 0),
                 'score_embedding': scores.get('embedding', 0),
@@ -71,7 +69,6 @@ def reduce_dimensions(embeddings, n_components=2):
 def cluster_embeddings(embeddings_2d, eps, min_samples=6):    
     clustering = DBSCAN(eps=eps, min_samples=min_samples).fit(embeddings_2d)
     return clustering.labels_
-
 
 def main():
     if not os.path.exists(INPUT_FILE):

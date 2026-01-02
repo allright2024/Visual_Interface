@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 
-const ClusterMap = ({ data, onSelect, selectedId }) => {
+const ClusterMap = ({ data, onSelect, selectedId, colorMetric = 'total_score', visibleColors, toggleColor, colors }) => {
     const svgRef = useRef(null);
     const [tooltipContent, setTooltipContent] = useState(null);
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -23,22 +23,13 @@ const ClusterMap = ({ data, onSelect, selectedId }) => {
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
 
-        const xMin = d3.min(data, d => d.x);
+        const xMin = 4;
         const xMax = d3.max(data, d => d.x);
 
         const x = d3.scaleLinear()
             .domain([xMin, xMax])
             .range([0, width]);
 
-        g.append("g")
-            .attr("transform", `translate(0, ${height})`)
-            .call(d3.axisBottom(x).ticks(10))
-            .append("text")
-            .attr("x", width)
-            .attr("y", -10)
-            .attr("fill", "currentColor")
-            .style("font-size", "10px")
-            .text("UMAP Dimension 1");
 
         const yMin = d3.min(data, d => d.y);
         const yMax = d3.max(data, d => d.y);
@@ -48,33 +39,39 @@ const ClusterMap = ({ data, onSelect, selectedId }) => {
             .domain([yMin - yPadding, yMax + yPadding])
             .range([height, 0]);
 
-        g.append("g")
-            .call(d3.axisLeft(y).ticks(10))
-            .append("text")
-            .attr("x", 10)
-            .attr("y", -10)
-            .attr("fill", "currentColor")
-            .style("font-size", "10px")
-            .text("UMAP Dimension 2");
 
+        const featureScores = new Map();
+        const groups = d3.group(data, d => d.feature_id);
+        const aggregatedScores = [];
 
-        const clusterIds = data.map(d => d.cluster_id).filter(id => id >= 0);
-        const maxClusterId = d3.max(clusterIds) || 0;
+        for (const [id, items] of groups) {
+            const score = d3.mean(items, d => d[colorMetric]);
+            featureScores.set(id, score);
+            aggregatedScores.push(score);
+        }
 
-        const color = d3.scaleSequential()
-            .domain([0, maxClusterId])
-            .interpolator(d3.interpolateTurbo);
+        const colorScale = d3.scaleQuantile()
+            .domain(aggregatedScores)
+            .range(colors);
+
+        const filteredData = data.filter(d => {
+            const score = featureScores.get(d.feature_id);
+            const color = colorScale(score);
+            return visibleColors.has(color);
+        });
+
 
         g.selectAll("circle")
-            .data(data)
+            .data(filteredData)
             .enter()
             .append("circle")
             .attr("cx", d => x(d.x))
             .attr("cy", d => y(d.y))
-            .attr("r", d => d.feature_id === selectedId ? 5 : 3)
-            .style("fill", d => d.feature_id === selectedId ? "#ef4444" : color(d.cluster_id))
-            .style("opacity", d => d.feature_id === selectedId ? 1 : 0.6)
+            .attr("r", d => d.feature_id === selectedId ? 5 : 2)
+            .style("fill", d => colorScale(featureScores.get(d.feature_id)))
+            .style("opacity", d => d.feature_id === selectedId ? 1 : 0.9)
             .style("stroke", d => d.feature_id === selectedId ? "black" : "none")
+            .style("stroke-width", d => d.feature_id === selectedId ? 2.0 : 0)
             .on("mouseover", (event, d) => {
                 setTooltipContent({
                     id: d.feature_id,
@@ -96,11 +93,35 @@ const ClusterMap = ({ data, onSelect, selectedId }) => {
                 setTooltipVisible(false);
             });
 
-    }, [data, selectedId]);
+    }, [data, selectedId, colorMetric, visibleColors, colors]);
 
     return (
         <div className="w-full h-full relative p-2 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
             <h3 className="text-sm font-bold text-slate-500 mb-2 text-center">Semantic Clusters (UMAP)</h3>
+
+            <div className="flex justify-center gap-2 mb-2">
+                <span>Low Score</span>
+                {colors.map((color, idx) => (
+                    <label key={color} className="flex items-center cursor-pointer" title={`Toggle range ${idx + 1}`}>
+                        <input
+                            type="checkbox"
+                            checked={visibleColors.has(color)}
+                            onChange={() => toggleColor(color)}
+                            className="hidden"
+                        />
+                        <div
+                            style={{
+                                backgroundColor: color,
+                                opacity: visibleColors.has(color) ? 1 : 0.3,
+                                border: visibleColors.has(color) ? '2px solid #333' : '1px solid #ddd'
+                            }}
+                            className="w-5 h-5 rounded-full transition-all duration-200"
+                        ></div>
+                    </label>
+                ))}
+                <span>High Score</span>
+            </div>
+
             <div className="flex-1 relative">
                 <svg ref={svgRef} className="absolute inset-0 w-full h-full"></svg>
             </div>
