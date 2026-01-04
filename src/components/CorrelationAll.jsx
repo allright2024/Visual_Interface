@@ -33,7 +33,7 @@ const CorrelationAll = ({ data, onSelect, selectedId, colorMetric, setColorMetri
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
         const x = d3.scaleLinear()
-            .domain([0.78, 0.96])
+            .domain([0.76, 0.96])
             .range([0, width]);
 
         g.append("g")
@@ -69,8 +69,8 @@ const CorrelationAll = ({ data, onSelect, selectedId, colorMetric, setColorMetri
             .data(filteredData)
             .enter()
             .append("circle")
-            .attr("cx", d => x(d.similarity_mean) + ((d.explanation_index !== undefined ? d.explanation_index - 1 : 0) * 3))
-            .attr("cy", d => y(d.similarity_var) + ((d.explanation_index !== undefined ? d.explanation_index - 1 : 0) * 3))
+            .attr("cx", d => x(d.similarity_mean))
+            .attr("cy", d => y(d.similarity_var))
             .attr("r", d => d.feature_id === selectedId ? 5 : 2)
             .style("fill", d => colorScale(d[colorMetric]))
             .style("stroke", d => d.feature_id === selectedId ? "#333" : "none")
