@@ -39,24 +39,12 @@ const ClusterMap = ({ data, onSelect, selectedId, colorMetric = 'total_score', v
             .domain([yMin - yPadding, yMax + yPadding])
             .range([height, 0]);
 
-
-        const featureScores = new Map();
-        const groups = d3.group(data, d => d.feature_id);
-        const aggregatedScores = [];
-
-        for (const [id, items] of groups) {
-            const score = d3.mean(items, d => d[colorMetric]);
-            featureScores.set(id, score);
-            aggregatedScores.push(score);
-        }
-
         const colorScale = d3.scaleQuantile()
-            .domain(aggregatedScores)
+            .domain(data.map(d => d[colorMetric]))
             .range(colors);
 
         const filteredData = data.filter(d => {
-            const score = featureScores.get(d.feature_id);
-            const color = colorScale(score);
+            const color = colorScale(d[colorMetric]);
             return visibleColors.has(color);
         });
 
@@ -68,7 +56,7 @@ const ClusterMap = ({ data, onSelect, selectedId, colorMetric = 'total_score', v
             .attr("cx", d => x(d.x))
             .attr("cy", d => y(d.y))
             .attr("r", d => d.feature_id === selectedId ? 5 : 2)
-            .style("fill", d => colorScale(featureScores.get(d.feature_id)))
+            .style("fill", d => colorScale(d[colorMetric]))
             .style("opacity", d => d.feature_id === selectedId ? 1 : 0.9)
             .style("stroke", d => d.feature_id === selectedId ? "black" : "none")
             .style("stroke-width", d => d.feature_id === selectedId ? 2.0 : 0)
@@ -77,6 +65,7 @@ const ClusterMap = ({ data, onSelect, selectedId, colorMetric = 'total_score', v
                     id: d.feature_id,
                     explainer: d.llm_explainer,
                     cluster: d.cluster_id,
+                    score: d[colorMetric],
                     x: d.x,
                     y: d.y
                 });
