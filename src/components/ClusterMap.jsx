@@ -1,52 +1,84 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
+import RangeSlider from './RangeSlider';
 
-const ClusterMap = ({ data, onSelect, selectedId, colorMetric = 'total_score', visibleColors, toggleColor, colors }) => {
+const ClusterMap = ({ data, onSelect, selectedId, selectedExplainer, colorMetric = 'total_score', visibleColors, toggleColor, colors, range, setRange, explainerColorScale, getFeatureColor, propsXDomain, propsYDomain }) => {
     const svgRef = useRef(null);
     const [tooltipContent, setTooltipContent] = useState(null);
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
     const [tooltipVisible, setTooltipVisible] = useState(false);
+    const [showDensity, setShowDensity] = useState(true);
 
     useEffect(() => {
-        if (!svgRef.current || !data || data.length === 0) return;
-        const margin = { top: 30, right: 30, bottom: 40, left: 100 };
-        const width = 850 - margin.left - margin.right;
-        const height = 530 - margin.top - margin.bottom;
+        if (!svgRef.current || !data) return;
+
+        const element = svgRef.current;
+        const rect = element.getBoundingClientRect();
+        const margin = { top: 10, right: 10, bottom: 10, left: 10 };
+
+        const width = rect.width - margin.left - margin.right;
+        const height = rect.height - margin.top - margin.bottom;
 
         const svg = d3.select(svgRef.current);
         svg.selectAll("*").remove();
-
-        svg.attr("width", 850)
-            .attr("height", 530);
 
         const g = svg.append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
 
         const xMin = 4;
-        const xMax = d3.max(data, d => d.x);
+        
+        const xDomain = propsXDomain || [xMin, d3.max(data, d => d.x)];
 
         const x = d3.scaleLinear()
-            .domain([xMin, xMax])
+            .domain(xDomain)
             .range([0, width]);
 
 
         const yMin = d3.min(data, d => d.y);
         const yMax = d3.max(data, d => d.y);
-        const yPadding = (yMax - yMin) * 0.05;
+        
+        const yDomain = propsYDomain || [yMin, yMax];
+        const yPadding = (yDomain[1] - yDomain[0]) * 0.05;
 
         const y = d3.scaleLinear()
-            .domain([yMin - yPadding, yMax + yPadding])
+            .domain([yDomain[0] - yPadding, yDomain[1] + yPadding])
             .range([height, 0]);
 
-        const colorScale = d3.scaleQuantile()
-            .domain(data.map(d => d[colorMetric]))
+        const extent = d3.extent(data, d => d[colorMetric]) || [0, 1];
+        const minVal = extent[0];
+        const maxVal = extent[1];
+        const domain = colors.map((_, i) => minVal + (i * (maxVal - minVal) / (colors.length - 1)));
+
+        const colorScale = d3.scaleLinear()
+            .domain(domain)
             .range(colors);
 
-        const filteredData = data.filter(d => {
-            const color = colorScale(d[colorMetric]);
-            return visibleColors.has(color);
-        });
+        const [minFilter, maxFilter] = range || [minVal, maxVal];
+        const filteredData = data.filter(d => d[colorMetric] >= minFilter && d[colorMetric] <= maxFilter);
+
+        if (showDensity) {
+            const densityData = d3.contourDensity()
+                .x(d => x(d.x))
+                .y(d => y(d.y))
+                .size([width, height])
+                .bandwidth(25)
+                .thresholds(15)
+                (filteredData);
+
+            const densityColor = d3.scaleLinear()
+                .domain(d3.extent(densityData, d => d.value))
+                .range(["transparent", "#94a3b8"]);
+
+            g.append("g")
+                .attr("class", "densities")
+                .selectAll("path")
+                .data(densityData)
+                .enter().append("path")
+                .attr("d", d3.geoPath())
+                .attr("fill", d => densityColor(d.value))
+                .attr("opacity", 0.5);
+        }
 
 
         g.selectAll("circle")
@@ -56,10 +88,20 @@ const ClusterMap = ({ data, onSelect, selectedId, colorMetric = 'total_score', v
             .attr("cx", d => x(d.x))
             .attr("cy", d => y(d.y))
             .attr("r", d => d.feature_id === selectedId ? 5 : 2)
-            .style("fill", d => colorScale(d[colorMetric]))
+            .style("fill", d => getFeatureColor ? getFeatureColor(d) : "#666")
             .style("opacity", d => d.feature_id === selectedId ? 1 : 0.9)
-            .style("stroke", d => d.feature_id === selectedId ? "black" : "none")
-            .style("stroke-width", d => d.feature_id === selectedId ? 2.0 : 0)
+            .style("stroke", d => {
+                if (d.feature_id === selectedId) {
+                    return explainerColorScale ? explainerColorScale(d.llm_explainer) : "black";
+                }
+                return "none";
+            })
+            .style("stroke-width", d => {
+                if (d.feature_id === selectedId) {
+                    return 2.5;
+                }
+                return 0;
+            })
             .on("mouseover", (event, d) => {
                 setTooltipContent({
                     id: d.feature_id,
@@ -73,7 +115,7 @@ const ClusterMap = ({ data, onSelect, selectedId, colorMetric = 'total_score', v
             })
             .on("click", (event, d) => {
                 event.stopPropagation();
-                onSelect(d.feature_id);
+                onSelect(d.feature_id, d.llm_explainer);
             })
             .on("mousemove", (event) => {
                 setTooltipPos({ x: event.clientX, y: event.clientY });
@@ -82,33 +124,59 @@ const ClusterMap = ({ data, onSelect, selectedId, colorMetric = 'total_score', v
                 setTooltipVisible(false);
             });
 
-    }, [data, selectedId, colorMetric, visibleColors, colors]);
+        if (selectedId) {
+            const selectedPoints = filteredData.filter(d => d.feature_id === selectedId);
+            if (selectedPoints.length > 1) {
+                const lineGenerator = d3.line()
+                    .x(d => x(d.x))
+                    .y(d => y(d.y));
+
+                const pointsToDraw = [...selectedPoints];
+                if (pointsToDraw.length > 2) pointsToDraw.push(pointsToDraw[0]);
+
+                g.append("path")
+                    .datum(pointsToDraw)
+                    .attr("fill", "none")
+                    .attr("stroke", "#555")
+                    .attr("stroke-width", 1.5)
+                    .attr("stroke-dasharray", "4 4")
+                    .attr("d", lineGenerator)
+                    .attr("pointer-events", "none");
+            }
+        }
+    }, [data, selectedId, selectedExplainer, colorMetric, visibleColors, colors, showDensity, range, explainerColorScale, getFeatureColor]);
+
+    const extent = useMemo(() => {
+        if (!data || data.length === 0) return [0, 1];
+        return d3.extent(data, d => d[colorMetric]) || [0, 1];
+    }, [data, colorMetric]);
 
     return (
         <div className="w-full h-full relative p-2 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
             <h3 className="text-sm font-bold text-slate-500 mb-2 text-center">Semantic Clusters (UMAP)</h3>
 
-            <div className="flex justify-center gap-2 mb-2">
-                <span>Low Score</span>
-                {colors.map((color, idx) => (
-                    <label key={color} className="flex items-center cursor-pointer" title={`Toggle range ${idx + 1}`}>
+            <div className="flex justify-center flex-col items-center mb-2">
+                <div className="flex items-center gap-2 mb-1">
+                    <span>Range: {range ? `${range[0].toFixed(2)} - ${range[1].toFixed(2)}` : "All"}</span>
+                    <label className="flex items-center gap-1 text-xs text-slate-500 cursor-pointer border-l pl-2 border-slate-300 ml-4">
                         <input
                             type="checkbox"
-                            checked={visibleColors.has(color)}
-                            onChange={() => toggleColor(color)}
-                            className="hidden"
+                            checked={showDensity}
+                            onChange={(e) => setShowDensity(e.target.checked)}
+                            className="accent-slate-500"
                         />
-                        <div
-                            style={{
-                                backgroundColor: color,
-                                opacity: visibleColors.has(color) ? 1 : 0.3,
-                                border: visibleColors.has(color) ? '2px solid #333' : '1px solid #ddd'
-                            }}
-                            className="w-5 h-5 rounded-full transition-all duration-200"
-                        ></div>
+                        Density
                     </label>
-                ))}
-                <span>High Score</span>
+                </div>
+                <div className="w-[340px] px-4">
+                    <RangeSlider
+                        min={extent[0]}
+                        max={extent[1]}
+                        value={range}
+                        onChange={setRange}
+                        colors={colors}
+                    />
+                </div>
             </div>
 
             <div className="flex-1 relative">

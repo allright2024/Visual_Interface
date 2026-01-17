@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect } from 'react';
 
-const DetailPanel = ({ data, selectedFeatureId }) => {
+const DetailPanel = ({ data, selectedFeatureId, selectedExplainer, explainerColorScale }) => {
     const siblings = useMemo(() => {
         if (selectedFeatureId === null || !data) return [];
         return data.filter(d => d.feature_id === selectedFeatureId);
@@ -29,7 +29,19 @@ const DetailPanel = ({ data, selectedFeatureId }) => {
 
             <div className="flex-1 overflow-y-auto pr-2 space-y-2">
                 {siblings.map((expl, idx) => (
-                    <div key={idx} className="p-2 bg-slate-50 rounded border border-slate-200">
+                    <div
+                        key={idx}
+                        className={`p-2 rounded border transition-all duration-200 ${expl.llm_explainer === selectedExplainer
+                            ? 'shadow-md transform'
+                            : 'opacity-60 hover:opacity-100 hover:shadow-sm'
+                            }`}
+                        style={{
+                            borderColor: explainerColorScale ? explainerColorScale(expl.llm_explainer) : '#e2e8f0',
+                            backgroundColor: expl.llm_explainer === selectedExplainer ? '#f8fafc' : '#ffffff',
+                            borderLeftWidth: '4px',
+                            borderLeftColor: explainerColorScale ? explainerColorScale(expl.llm_explainer) : '#e2e8f0'
+                        }}
+                    >
                         <div className="flex justify-between items-center mb-1">
                             <span className="text-xs font-bold text-slate-500 truncate max-w-[60%]">
                                 {expl.llm_explainer}
