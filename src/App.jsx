@@ -55,22 +55,18 @@ function App() {
     });
   }, [data, filters, visibleExplainers]);
 
-  /* Table Sorting State */
   const [tableSortKey, setTableSortKey] = useState('total_score');
 
   const dataForTable = useMemo(() => {
-    // 1. Filter by metrics (Similarity/Variance)
     const validMetricsData = data.filter(d => {
       if (d.similarity_mean < filters.minSimilarity) return false;
       if (d.similarity_var > filters.maxVariance) return false;
       return true;
     });
 
-    // 2. Sort and assign Rank (Global Rank among valid metrics)
     const sorted = [...validMetricsData].sort((a, b) => (b[tableSortKey] || 0) - (a[tableSortKey] || 0));
     const ranked = sorted.map((d, i) => ({ ...d, globalRank: i + 1 }));
 
-    // 3. Filter by Visible Explainers
     return ranked.filter(d => {
       const explainer = d.llm_explainer.toLowerCase();
       for (const group of visibleExplainers) {
