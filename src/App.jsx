@@ -55,13 +55,30 @@ function App() {
     });
   }, [data, filters, visibleExplainers]);
 
+  /* Table Sorting State */
+  const [tableSortKey, setTableSortKey] = useState('total_score');
+
   const dataForTable = useMemo(() => {
-    return data.filter(d => {
+    // 1. Filter by metrics (Similarity/Variance)
+    const validMetricsData = data.filter(d => {
       if (d.similarity_mean < filters.minSimilarity) return false;
       if (d.similarity_var > filters.maxVariance) return false;
       return true;
     });
-  }, [data, filters.minSimilarity, filters.maxVariance])
+
+    // 2. Sort and assign Rank (Global Rank among valid metrics)
+    const sorted = [...validMetricsData].sort((a, b) => (b[tableSortKey] || 0) - (a[tableSortKey] || 0));
+    const ranked = sorted.map((d, i) => ({ ...d, globalRank: i + 1 }));
+
+    // 3. Filter by Visible Explainers
+    return ranked.filter(d => {
+      const explainer = d.llm_explainer.toLowerCase();
+      for (const group of visibleExplainers) {
+        if (explainer.includes(group.toLowerCase())) return true;
+      }
+      return false;
+    });
+  }, [data, filters.minSimilarity, filters.maxVariance, tableSortKey, visibleExplainers]);
 
   const handleSelectFeature = (id, explainer = null) => {
     setSelectedFeatureId(id);
@@ -228,6 +245,8 @@ function App() {
               onToggle={handleToggleExclusion}
               excludedIds={filters.excludedIds}
               visibleFeatureIds={new Set(filteredData.map(d => d.feature_id))}
+              sortKey={tableSortKey}
+              onSortChange={setTableSortKey}
             />
           </div>
           <div className="flex-[7.05] border-stone-300 border-2 p-2 rounded-xl">

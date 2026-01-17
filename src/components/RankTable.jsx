@@ -1,11 +1,6 @@
 import React, { useMemo, useState } from "react";
 
-const RankTable = ({ data, onSelect, selectedId, onToggle, excludedIds, visibleFeatureIds }) => {
-    const [sortKey, setSortKey] = useState('total_score');
-
-    const sortedData = useMemo(() => {
-        return [...data].sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
-    }, [data, sortKey]);
+const RankTable = ({ data, onSelect, selectedId, onToggle, sortKey, onSortChange, visibleFeatureIds }) => {
 
     return (
         <div className="flex-1 overflow-auto rounded-xl border border-stone-300">
@@ -17,7 +12,7 @@ const RankTable = ({ data, onSelect, selectedId, onToggle, excludedIds, visibleF
                         <th className="p-2 border-b">
                             <select
                                 value={sortKey}
-                                onChange={(e) => setSortKey(e.target.value)}
+                                onChange={(e) => onSortChange(e.target.value)}
                                 className="bg-transparent border-none focus:ring-0 cursor-pointer font-semibold uppercase text-xs p-0 outline-none"
                             >
                                 <option value="total_score">Total</option>
@@ -30,7 +25,7 @@ const RankTable = ({ data, onSelect, selectedId, onToggle, excludedIds, visibleF
                     </tr>
                 </thead>
                 <tbody>
-                    {sortedData.map((item, index) => {
+                    {data.map((item) => {
                         const isVisible = visibleFeatureIds?.has(item.feature_id) ?? true;
                         const isSelected = selectedId === item.feature_id;
                         return (
@@ -39,7 +34,7 @@ const RankTable = ({ data, onSelect, selectedId, onToggle, excludedIds, visibleF
                                 className={`border-b last:border-0 hover:bg-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-100' : 'bg-white'}`}
                                 onClick={() => onSelect(item.feature_id)}
                             >
-                                <td className="p-2 text-slate-400 font-mono text-xs">{index + 1}</td>
+                                <td className="p-2 text-slate-400 font-mono text-xs">{item.globalRank}</td>
                                 <td className="p-2">
                                     <div className="font-medium text-xs truncate max-w-[120px]" title={item.llm_explainer}>
                                         Feature {item.feature_id}
