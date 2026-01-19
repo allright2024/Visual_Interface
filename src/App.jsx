@@ -205,7 +205,7 @@ function App() {
           </div>
 
           <div className="flex items-center gap-4 px-4 h-full flex-1 justify-center hover:bg-slate-50 transition-colors">
-            <span className="text-xs font-extrabold text-slate-700 tracking-tight">Select Score</span>
+            <span className="text-xs font-extrabold text-slate-700 tracking-tight">Select Score Metric</span>
             <div className="flex items-center gap-3">
               {[
                 { id: 'score_detection', label: 'Detection' },
@@ -292,7 +292,7 @@ function App() {
             selectedExplainer={selectedExplainer}
           />
         </div>
-        <div className="row-start-8 row-span-4 col-span-4 border-stone-300 border-2 p-2 rounded-xl flex flex-col min-h-0 overflow-hidden">
+        <div className="row-start-8 row-span-4 col-span-4 bg-white border-stone-300 border-2 p-2 rounded-xl flex flex-col min-h-0 overflow-hidden">
           <DetailPanel
             data={data}
             selectedFeatureId={selectedFeatureId}
