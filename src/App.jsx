@@ -25,7 +25,7 @@ function App() {
   const [visibleExplainers, setVisibleExplainers] = useState(new Set(explainerGroups));
 
   useEffect(() => {
-    fetch('/processed_data_v2.json')
+    fetch(`${import.meta.env.BASE_URL}processed_data_v2.json`)
       .then(res => {
         if (!res.ok) throw new Error("Data not found");
         return res.json();
