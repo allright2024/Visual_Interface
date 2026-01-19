@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
-import RangeSlider from './RangeSlider';
+
 
 const ClusterMap = ({ data, onSelect, selectedId, selectedExplainer, colorMetric = 'total_score', visibleColors, toggleColor, colors, range, setRange, explainerColorScale, getFeatureColor, propsXDomain, propsYDomain }) => {
     const svgRef = useRef(null);
@@ -27,7 +27,7 @@ const ClusterMap = ({ data, onSelect, selectedId, selectedExplainer, colorMetric
 
 
         const xMin = 4;
-        
+
         const xDomain = propsXDomain || [xMin, d3.max(data, d => d.x)];
 
         const x = d3.scaleLinear()
@@ -37,7 +37,7 @@ const ClusterMap = ({ data, onSelect, selectedId, selectedExplainer, colorMetric
 
         const yMin = d3.min(data, d => d.y);
         const yMax = d3.max(data, d => d.y);
-        
+
         const yDomain = propsYDomain || [yMin, yMax];
         const yPadding = (yDomain[1] - yDomain[0]) * 0.05;
 
@@ -153,31 +153,30 @@ const ClusterMap = ({ data, onSelect, selectedId, selectedExplainer, colorMetric
 
     return (
         <div className="w-full h-full relative p-2 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
-            <h3 className="text-sm font-bold text-slate-500 mb-2 text-center">Semantic Clusters (UMAP)</h3>
-
-            <div className="flex justify-center flex-col items-center mb-2">
-                <div className="flex items-center gap-2 mb-1">
-                    <span>Range: {range ? `${range[0].toFixed(2)} - ${range[1].toFixed(2)}` : "All"}</span>
-                    <label className="flex items-center gap-1 text-xs text-slate-500 cursor-pointer border-l pl-2 border-slate-300 ml-4">
-                        <input
-                            type="checkbox"
-                            checked={showDensity}
-                            onChange={(e) => setShowDensity(e.target.checked)}
-                            className="accent-slate-500"
-                        />
-                        Density
-                    </label>
+            <h3 className="text-base font-bold text-slate-700 mb-2 px-1 border-b border-slate-200 pb-2">Semantic Clusters (UMAP)</h3>
+            <div className="absolute top-14 right-4 flex flex-col gap-1 z-10 bg-white/80 p-2 rounded-md backdrop-blur-sm border border-slate-100 shadow-sm">
+                <div className="flex items-center gap-2">
+                    <div className="w-16"></div>
+                    <div className="w-16 flex justify-between text-[9px] text-slate-500 font-semibold leading-none">
+                        <span>Low</span>
+                        <span>High</span>
+                    </div>
                 </div>
-                <div className="w-[340px] px-4">
-                    <RangeSlider
-                        min={extent[0]}
-                        max={extent[1]}
-                        value={range}
-                        onChange={setRange}
-                        colors={colors}
-                    />
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-slate-600 w-16 text-right">Llama</span>
+                    <div className="w-16 h-2 rounded-sm" style={{ background: 'linear-gradient(to right, #ffe0b2, #f57c00)' }}></div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-slate-600 w-16 text-right">Gemini-flash</span>
+                    <div className="w-16 h-2 rounded-sm" style={{ background: 'linear-gradient(to right, #bbdefb, #1e88e5)' }}></div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-slate-600 w-16 text-right">GPT-4o-mini</span>
+                    <div className="w-16 h-2 rounded-sm" style={{ background: 'linear-gradient(to right, #c8e6c9, #43a047)' }}></div>
                 </div>
             </div>
+
+
 
             <div className="flex-1 relative">
                 <svg ref={svgRef} className="absolute inset-0 w-full h-full"></svg>
@@ -194,10 +193,23 @@ const ClusterMap = ({ data, onSelect, selectedId, selectedExplainer, colorMetric
                     }}
                 >
                     <div className="font-bold mb-1">Feature {tooltipContent.id}</div>
-                    <div className="mb-1 text-slate-500 max-w-[200px] truncate">{tooltipContent.explainer}</div>
-                    <div>Cluster ID: {tooltipContent.cluster}</div>
-                    <div>X: {tooltipContent.x?.toFixed(2)}</div>
-                    <div>Y: {tooltipContent.y?.toFixed(2)}</div>
+                    <div className="mb-1 text-slate-500 max-w-[200px] truncate">
+                        {(() => {
+                            const lower = tooltipContent.explainer.toLowerCase();
+                            if (lower.includes('llama')) return <span className="text-orange-600 font-bold">Llama</span>;
+                            if (lower.includes('gemini')) return <span className="text-blue-600 font-bold">Gemini-flash</span>;
+                            if (lower.includes('gpt')) return <span className="text-green-600 font-bold">GPT-4o-mini</span>;
+                            return tooltipContent.explainer;
+                        })()}
+                    </div>
+                    <div>
+                        {{
+                            'score_detection': 'Detection',
+                            'score_embedding': 'Embedding',
+                            'score_fuzz': 'Fuzz',
+                            'total_score': 'Total Score'
+                        }[colorMetric] || 'Score'}: {tooltipContent.score?.toFixed(2)}
+                    </div>
                 </div>
             )}
         </div>

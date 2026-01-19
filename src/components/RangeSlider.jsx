@@ -57,14 +57,14 @@ const RangeSlider = ({ min, max, value, onChange, colors }) => {
 
     return (
         <div className="w-full flex flex-col items-center select-none">
-            <div className="flex justify-between w-full text-[10px] text-slate-500 font-bold mb-1 px-1">
-                <span>{typeof currentMin === 'number' ? currentMin.toFixed(2) : min}</span>
-                <span>{typeof currentMax === 'number' ? currentMax.toFixed(2) : max}</span>
+            <div className="flex justify-between w-full text-[10px] text-slate-500 font-bold mb-1 px-1 py-0 -mt-2">
+                <span>{typeof currentMin === 'number' ? currentMin.toFixed(2) : min} (Low)</span>
+                <span>{typeof currentMax === 'number' ? currentMax.toFixed(2) : max} (High)</span>
             </div>
 
             <div
                 ref={containerRef}
-                className="relative w-full h-4 rounded-md cursor-pointer"
+                className="relative w-full h-1.5 rounded-md cursor-pointer mb-1"
                 style={{
                     background: `linear-gradient(to right, ${colors.join(', ')})`
                 }}
@@ -79,19 +79,19 @@ const RangeSlider = ({ min, max, value, onChange, colors }) => {
                 />
 
                 <div
-                    className="absolute top-[-4px] w-4 h-6 bg-white border-2 border-slate-600 rounded shadow-md cursor-ew-resize hover:scale-110 transition-transform z-10 flex items-center justify-center"
-                    style={{ left: `calc(${minPos}% - 8px)` }}
+                    className="absolute top-[-5px] w-2.5 h-4 bg-white border border-slate-600 rounded-sm shadow-sm cursor-ew-resize hover:scale-110 transition-transform z-10 flex items-center justify-center"
+                    style={{ left: `calc(${minPos}% - 5px)` }}
                     onMouseDown={handleMouseDown('min')}
                 >
-                    <div className="w-[2px] h-3 bg-slate-300"></div>
+                    {/* <div className="w-[1px] h-2 bg-slate-300"></div> */}
                 </div>
 
                 <div
-                    className="absolute top-[-4px] w-4 h-6 bg-white border-2 border-slate-600 rounded shadow-md cursor-ew-resize hover:scale-110 transition-transform z-10 flex items-center justify-center"
-                    style={{ left: `calc(${maxPos}% - 8px)` }}
+                    className="absolute top-[-5px] w-2.5 h-4 bg-white border border-slate-600 rounded-sm shadow-sm cursor-ew-resize hover:scale-110 transition-transform z-10 flex items-center justify-center"
+                    style={{ left: `calc(${maxPos}% - 5px)` }}
                     onMouseDown={handleMouseDown('max')}
                 >
-                    <div className="w-[2px] h-3 bg-slate-300"></div>
+                    {/* <div className="w-[1px] h-2 bg-slate-300"></div> */}
                 </div>
             </div>
         </div>

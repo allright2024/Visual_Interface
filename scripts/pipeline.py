@@ -9,9 +9,9 @@ from collections import Counter
 import re
 import os
 
-INPUT_FILE = './scripts/data.json'
-OUTPUT_FILE = 'src/assets/processed_data.json' 
-OUTPUT_FILE = 'public/processed_data.json'
+INPUT_FILE = './scripts/data_v2.json'
+OUTPUT_FILE = 'src/assets/processed_data_v2.json' 
+OUTPUT_FILE = 'public/processed_data_v2.json'
 MODEL_NAME = 'all-MiniLM-L6-v2'
 
 def load_data(filepath):

@@ -1,15 +1,14 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
-import RangeSlider from './RangeSlider';
+
 
 const CorrelationAll = ({ data, onSelect, selectedId, selectedExplainer, colorMetric, setColorMetric, visibleColors, toggleColor, colors, range, setRange, explainerColorScale, getFeatureColor }) => {
     const svgRef = useRef(null);
     const [tooltipContent, setTooltipContent] = useState(null);
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
     const [tooltipVisible, setTooltipVisible] = useState(false);
-    
+
     const metrics = [
-        { id: 'total_score', label: 'Total' },
         { id: 'score_detection', label: 'Detection' },
         { id: 'score_embedding', label: 'Embedding' },
         { id: 'score_fuzz', label: 'Fuzz' },
@@ -34,8 +33,11 @@ const CorrelationAll = ({ data, onSelect, selectedId, selectedExplainer, colorMe
         const g = svg.append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
+        const xExtent = d3.extent(data, d => d.similarity_mean);
+        const xDomain = [0.1, 0.9];
+
         const x = d3.scaleLinear()
-            .domain([0.76, 0.96])
+            .domain(xDomain)
             .range([0, width]);
 
         g.append("g")
@@ -48,8 +50,11 @@ const CorrelationAll = ({ data, onSelect, selectedId, selectedExplainer, colorMe
             .style("font-size", "10px")
             .text("Similarity Average");
 
+        const yExtent = d3.extent(data, d => d.similarity_var);
+        const yMax = 0.11;
+
         const y = d3.scaleLinear()
-            .domain([0, 0.007])
+            .domain([0, yMax])
             .range([height, 0]);
 
         g.append("g")
@@ -114,7 +119,6 @@ const CorrelationAll = ({ data, onSelect, selectedId, selectedExplainer, colorMe
             })
             .on("mousemove", (event) => {
                 setTooltipPos({ x: event.clientX, y: event.clientY });
-                setTooltipVisible(false);
             });
 
         if (selectedId) {
@@ -146,35 +150,33 @@ const CorrelationAll = ({ data, onSelect, selectedId, selectedExplainer, colorMe
 
     return (
         <div className="w-full h-full relative p-2 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
-            <div className="flex flex-col gap-2 mb-2 z-10 shrink-0">
-                <div className="flex justify-center gap-4">
-                    {metrics.map(metric => (
-                        <label key={metric.id} className="flex items-center gap-1 text-xs font-semibold text-slate-600 cursor-pointer">
-                            <input
-                                type="radio"
-                                name="colorMetricAll"
-                                value={metric.id}
-                                checked={colorMetric === metric.id}
-                                onChange={(e) => setColorMetric(e.target.value)}
-                                className="accent-blue-500"
-                            />
-                            {metric.label}
-                        </label>
-                    ))}
+
+            <div className="text-base font-bold text-slate-700 mb-2 px-1 border-b border-slate-200 pb-2">Similarity Score Scatter Graph</div>
+            <div className="absolute top-14 right-4 flex flex-col gap-1 z-10 bg-white/80 p-2 rounded-md backdrop-blur-sm border border-slate-100 shadow-sm">
+                <div className="flex items-center gap-2">
+                    <div className="w-16"></div>
+                    <div className="w-16 flex justify-between text-[9px] text-slate-500 font-semibold leading-none">
+                        <span>Low</span>
+                        <span>High</span>
+                    </div>
                 </div>
-                <div className="flex justify-center flex-col items-center w-[300px] mt-2 ml-12">
-                    <RangeSlider
-                        min={extent[0]}
-                        max={extent[1]}
-                        value={range}
-                        onChange={setRange}
-                        colors={colors}
-                    />
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-slate-600 w-16 text-right">Llama</span>
+                    <div className="w-16 h-2 rounded-sm" style={{ background: 'linear-gradient(to right, #ffe0b2, #f57c00)' }}></div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-slate-600 w-16 text-right">Gemini-flash</span>
+                    <div className="w-16 h-2 rounded-sm" style={{ background: 'linear-gradient(to right, #bbdefb, #1e88e5)' }}></div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-slate-600 w-16 text-right">GPT-4o-mini</span>
+                    <div className="w-16 h-2 rounded-sm" style={{ background: 'linear-gradient(to right, #c8e6c9, #43a047)' }}></div>
                 </div>
             </div>
             <div className="flex-1 relative min-h-0">
                 <svg ref={svgRef} className="absolute inset-0 w-full h-full"></svg>
             </div>
+
 
             {
                 tooltipVisible && tooltipContent && (
@@ -188,7 +190,15 @@ const CorrelationAll = ({ data, onSelect, selectedId, selectedExplainer, colorMe
                         }}
                     >
                         <div className="font-bold mb-1">Feature {tooltipContent.id}</div>
-                        <div className="mb-1 text-slate-500 max-w-[200px] truncate">{tooltipContent.explainer}</div>
+                        <div className="mb-1 text-slate-500 max-w-[200px] truncate">
+                            {(() => {
+                                const lower = tooltipContent.explainer.toLowerCase();
+                                if (lower.includes('llama')) return <span className="text-orange-600 font-bold">Llama</span>;
+                                if (lower.includes('gemini')) return <span className="text-blue-600 font-bold">Gemini-flash</span>;
+                                if (lower.includes('gpt')) return <span className="text-green-600 font-bold">GPT-4o-mini</span>;
+                                return tooltipContent.explainer;
+                            })()}
+                        </div>
                         <div>Sim Avg: {tooltipContent.simMean?.toFixed(3)}</div>
                         <div>Sim Var: {tooltipContent.simVar?.toFixed(4)}</div>
                         <div>{tooltipContent.scoreLabel}: {tooltipContent.score?.toFixed(2)}</div>
