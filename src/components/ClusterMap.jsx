@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 
 
-const ClusterMap = ({ data, onSelect, selectedId, selectedExplainer, colorMetric = 'total_score', visibleColors, toggleColor, colors, range, setRange, explainerColorScale, getFeatureColor, propsXDomain, propsYDomain }) => {
+const ClusterMap = ({ data, onSelect, selectedId, selectedExplainer, colorMetric = 'total_score', visibleColors, toggleColor, colors, explainerColorScale, getFeatureColor, propsXDomain, propsYDomain }) => {
     const svgRef = useRef(null);
     const [tooltipContent, setTooltipContent] = useState(null);
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -54,8 +54,7 @@ const ClusterMap = ({ data, onSelect, selectedId, selectedExplainer, colorMetric
             .domain(domain)
             .range(colors);
 
-        const [minFilter, maxFilter] = range || [minVal, maxVal];
-        const filteredData = data.filter(d => d[colorMetric] >= minFilter && d[colorMetric] <= maxFilter);
+        const filteredData = data;
 
         if (showDensity) {
             const densityData = d3.contourDensity()
@@ -144,7 +143,7 @@ const ClusterMap = ({ data, onSelect, selectedId, selectedExplainer, colorMetric
                     .attr("pointer-events", "none");
             }
         }
-    }, [data, selectedId, selectedExplainer, colorMetric, visibleColors, colors, showDensity, range, explainerColorScale, getFeatureColor]);
+    }, [data, selectedId, selectedExplainer, colorMetric, visibleColors, colors, showDensity, explainerColorScale, getFeatureColor]);
 
     const extent = useMemo(() => {
         if (!data || data.length === 0) return [0, 1];
@@ -153,28 +152,8 @@ const ClusterMap = ({ data, onSelect, selectedId, selectedExplainer, colorMetric
 
     return (
         <div className="w-full h-full relative p-2 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
-            <h3 className="text-base font-bold text-slate-700 mb-2 px-1 border-b border-slate-200 pb-2">Semantic Clusters (UMAP)</h3>
-            <div className="absolute top-14 right-4 flex flex-col gap-1 z-10 bg-white/80 p-2 rounded-md backdrop-blur-sm border border-slate-100 shadow-sm">
-                <div className="flex items-center gap-2">
-                    <div className="w-16"></div>
-                    <div className="w-16 flex justify-between text-[9px] text-slate-500 font-semibold leading-none">
-                        <span>Low</span>
-                        <span>High</span>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-medium text-slate-600 w-16 text-right">Llama</span>
-                    <div className="w-16 h-2 rounded-sm" style={{ background: 'linear-gradient(to right, #ffe0b2, #f57c00)' }}></div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-medium text-slate-600 w-16 text-right">Gemini-flash</span>
-                    <div className="w-16 h-2 rounded-sm" style={{ background: 'linear-gradient(to right, #bbdefb, #1e88e5)' }}></div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-medium text-slate-600 w-16 text-right">GPT-4o-mini</span>
-                    <div className="w-16 h-2 rounded-sm" style={{ background: 'linear-gradient(to right, #c8e6c9, #43a047)' }}></div>
-                </div>
-            </div>
+            <h3 className="text-base font-bold text-slate-700 mb-2 px-1 border-b border-slate-200 pb-2">Semantic Map (UMAP)</h3>
+
 
 
 

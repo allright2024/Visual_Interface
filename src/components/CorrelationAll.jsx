@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 
 
-const CorrelationAll = ({ data, onSelect, selectedId, selectedExplainer, colorMetric, setColorMetric, visibleColors, toggleColor, colors, range, setRange, explainerColorScale, getFeatureColor }) => {
+const CorrelationAll = ({ data, onSelect, selectedId, selectedExplainer, colorMetric, setColorMetric, visibleColors, toggleColor, colors, explainerColorScale, getFeatureColor }) => {
     const svgRef = useRef(null);
     const [tooltipContent, setTooltipContent] = useState(null);
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -18,7 +18,7 @@ const CorrelationAll = ({ data, onSelect, selectedId, selectedExplainer, colorMe
         if (!svgRef.current || !data) return;
 
         const containerWidth = 470;
-        const containerHeight = 480;
+        const containerHeight = 420;
 
         const margin = { top: 30, right: 30, bottom: 40, left: 60 };
         const width = containerWidth - margin.left - margin.right;
@@ -75,8 +75,8 @@ const CorrelationAll = ({ data, onSelect, selectedId, selectedExplainer, colorMe
             .domain(domain)
             .range(colors);
 
-        const [minFilter, maxFilter] = range || [minVal, maxVal];
-        const filteredData = data.filter(d => d[colorMetric] >= minFilter && d[colorMetric] <= maxFilter);
+        // Filter is handled by parent, so use data as is
+        const filteredData = data;
 
         g.selectAll("circle")
             .data(filteredData)
@@ -141,7 +141,7 @@ const CorrelationAll = ({ data, onSelect, selectedId, selectedExplainer, colorMe
                     .attr("pointer-events", "none");
             }
         }
-    }, [data, colorMetric, selectedId, selectedExplainer, visibleColors, range, explainerColorScale, getFeatureColor]);
+    }, [data, colorMetric, selectedId, selectedExplainer, visibleColors, explainerColorScale, getFeatureColor]);
 
     const extent = useMemo(() => {
         if (!data) return [0, 1];
@@ -152,27 +152,7 @@ const CorrelationAll = ({ data, onSelect, selectedId, selectedExplainer, colorMe
         <div className="w-full h-full relative p-2 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
 
             <div className="text-base font-bold text-slate-700 mb-2 px-1 border-b border-slate-200 pb-2">Similarity Score Scatter Graph</div>
-            <div className="absolute top-14 right-4 flex flex-col gap-1 z-10 bg-white/80 p-2 rounded-md backdrop-blur-sm border border-slate-100 shadow-sm">
-                <div className="flex items-center gap-2">
-                    <div className="w-16"></div>
-                    <div className="w-16 flex justify-between text-[9px] text-slate-500 font-semibold leading-none">
-                        <span>Low</span>
-                        <span>High</span>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-medium text-slate-600 w-16 text-right">Llama</span>
-                    <div className="w-16 h-2 rounded-sm" style={{ background: 'linear-gradient(to right, #ffe0b2, #f57c00)' }}></div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-medium text-slate-600 w-16 text-right">Gemini-flash</span>
-                    <div className="w-16 h-2 rounded-sm" style={{ background: 'linear-gradient(to right, #bbdefb, #1e88e5)' }}></div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-medium text-slate-600 w-16 text-right">GPT-4o-mini</span>
-                    <div className="w-16 h-2 rounded-sm" style={{ background: 'linear-gradient(to right, #c8e6c9, #43a047)' }}></div>
-                </div>
-            </div>
+
             <div className="flex-1 relative min-h-0">
                 <svg ref={svgRef} className="absolute inset-0 w-full h-full"></svg>
             </div>

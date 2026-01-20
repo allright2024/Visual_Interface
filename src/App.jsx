@@ -14,7 +14,11 @@ function App() {
 
   const [selectedFeatureId, setSelectedFeatureId] = useState(1);
   const [selectedExplainer, setSelectedExplainer] = useState("openai/gpt-4o-mini");
-  const [scoreRange, setScoreRange] = useState(null);
+  const [scoreRanges, setScoreRanges] = useState({
+    'Llama': [0, 1],
+    'Gemini-flash': [0, 1],
+    'GPT-4o-mini': [0, 1]
+  });
   const [filters, setFilters] = useState({
     minSimilarity: 0,
     maxVariance: 0.1,
@@ -44,17 +48,29 @@ function App() {
 
       const explainer = d.llm_explainer.toLowerCase();
       let matched = false;
+      let matchedGroup = null;
+
       for (const group of visibleExplainers) {
         if (explainer.includes(group.toLowerCase())) {
           matched = true;
+          matchedGroup = group;
           break;
         }
       }
       if (!matched) return false;
 
+      // Apply Score Range Filter
+      if (colorMetric) {
+        const range = scoreRanges[matchedGroup];
+        if (range) {
+          const score = d[colorMetric];
+          if (score < range[0] || score > range[1]) return false;
+        }
+      }
+
       return true;
     });
-  }, [data, filters, visibleExplainers]);
+  }, [data, filters, visibleExplainers, colorMetric, scoreRanges]);
 
   const dataForTable = useMemo(() => {
     const validMetricsData = data.filter(d => {
@@ -93,8 +109,15 @@ function App() {
     })
   }
 
+  const [globalRange, setGlobalRange] = useState([0, 1]);
+
   useEffect(() => {
-    setScoreRange(null);
+    setScoreRanges({
+      'Llama': [0, 1],
+      'Gemini-flash': [0, 1],
+      'GPT-4o-mini': [0, 1]
+    });
+    setGlobalRange([0, 1]);
   }, [colorMetric]);
 
   const colors = [
@@ -179,64 +202,145 @@ function App() {
   return (
     <div className="h-screen bg-slate-50 p-2 font-sans text-slate-800 overflow-hidden flex flex-col">
       <div className="shrink-0 grid grid-cols-10 gap-2 mb-2">
-        <div className="col-span-7 h-10 flex items-center bg-white border-2 border-stone-300 rounded-xl shadow-sm divide-x divide-stone-200">
-          <div className="flex items-center gap-4 px-4 h-full hover:bg-slate-50 transition-colors">
-            <span className="text-xs font-extrabold text-slate-700 tracking-tight">Select LLMs</span>
-            <div className="flex items-center gap-3">
+        <div className="col-span-7 flex bg-white border-2 border-stone-300 rounded-xl shadow-sm divide-x divide-stone-200">
+          <div className="flex flex-col flex-1 min-w-0 divide-y divide-stone-200">
+            <div className="flex items-center gap-4 px-4 flex-1 hover:bg-slate-50 transition-colors">
+              <span className="text-xs font-extrabold text-slate-700 tracking-tight w-28 shrink-0">Select LLMs</span>
+              <div className="flex items-center gap-5">
+                {explainerGroups.map(group => {
+                  let colorClass = "accent-gray-600";
+                  let gradientStyle = {};
+                  if (group.includes('Llama')) {
+                    colorClass = "accent-orange-600";
+                    gradientStyle = { background: 'linear-gradient(to right, #ffe0b2, #f57c00)' };
+                  } else if (group.includes('Gemini')) {
+                    colorClass = "accent-blue-600";
+                    gradientStyle = { background: 'linear-gradient(to right, #bbdefb, #1e88e5)' };
+                  } else if (group.includes('GPT')) {
+                    colorClass = "accent-green-600";
+                    gradientStyle = { background: 'linear-gradient(to right, #c8e6c9, #43a047)' };
+                  }
+
+                  return (
+                    <div key={group} className="flex items-center gap-2">
+                      <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 cursor-pointer select-none hover:text-slate-900">
+                        <input
+                          type="checkbox"
+                          checked={visibleExplainers.has(group)}
+                          onChange={() => handleToggleExplainer(group)}
+                          className={`w-3.5 h-3.5 rounded border-slate-300 ${colorClass}`}
+                        />
+                        {group}
+                      </label>
+                      <div className="flex flex-col gap-0.5">
+                        <div className="w-12 h-2 rounded-sm opacity-90 border border-slate-200" style={gradientStyle} title={`Score Intensity: Low -> High (${group})`}></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 px-4 flex-1 hover:bg-slate-50 transition-colors">
+              <span className="text-xs font-extrabold text-slate-700 tracking-tight w-28 shrink-0">Select Score Metric</span>
+              <div className="flex items-center gap-4">
+                {[
+                  { id: 'score_detection', label: 'Detection' },
+                  { id: 'score_embedding', label: 'Embedding' },
+                  { id: 'score_fuzz', label: 'Fuzz' },
+                ].map(metric => (
+                  <label key={metric.id} className="flex items-center gap-1.5 text-xs font-medium text-slate-600 cursor-pointer select-none hover:text-slate-900">
+                    <input
+                      type="radio"
+                      name="colorMetricApp"
+                      value={metric.id}
+                      checked={colorMetric === metric.id}
+                      onChange={(e) => setColorMetric(e.target.value)}
+                      className="w-3.5 h-3.5 accent-blue-500"
+                    />
+                    {metric.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 px-4 h-full w-[340px] hover:bg-slate-50 transition-colors">
+            <div className="flex flex-col items-start justify-center">
+              <span className="text-xs font-extrabold text-slate-700 tracking-tight whitespace-nowrap">Set Score Range</span>
+              <span className="text-[10px] font-semibold text-slate-500 w-full text-center">({
+                {
+                  'score_detection': 'Detection',
+                  'score_embedding': 'Embedding',
+                  'score_fuzz': 'Fuzz'
+                }[colorMetric]
+              })</span>
+            </div>
+            <div className="flex-1 flex flex-col justify-center h-full gap-1 min-w-0 py-1">
+              {/* Global Slider */}
+              <div className="flex items-center gap-2 h-6 w-full border-b border-slate-100 pb-1 mb-1">
+                <span className="text-[10px] font-extrabold w-12 text-right shrink-0 text-slate-800">All</span>
+                <span className="text-[8px] text-slate-400 font-mono w-6 text-right">{globalRange[0].toFixed(2)}</span>
+                <div className="flex-1 min-w-0 pt-1">
+                  <RangeSlider
+                    min={0}
+                    max={1}
+                    value={globalRange}
+                    onChange={(newRange) => {
+                      setGlobalRange(newRange);
+                      setScoreRanges(prev => {
+                        const next = { ...prev };
+                        for (const key in next) next[key] = newRange;
+                        return next;
+                      });
+                    }}
+                    colors={sliderColors}
+                    hideLabels={true}
+                  />
+                </div>
+                <span className="text-[8px] text-slate-400 font-mono w-6 text-left">{globalRange[1].toFixed(2)}</span>
+              </div>
+
               {explainerGroups.map(group => {
                 let colorClass = "accent-gray-600";
-                if (group.includes('Llama')) colorClass = "accent-orange-600";
-                else if (group.includes('Gemini')) colorClass = "accent-blue-600";
-                else if (group.includes('GPT')) colorClass = "accent-green-600";
+                let groupSliderColors = sliderColors;
+
+                if (group.includes('Llama')) {
+                  colorClass = "text-orange-600";
+                  groupSliderColors = ['#ffe0b2', '#f57c00'];
+                } else if (group.includes('Gemini')) {
+                  colorClass = "text-blue-600";
+                  groupSliderColors = ['#bbdefb', '#1e88e5'];
+                } else if (group.includes('GPT')) {
+                  colorClass = "text-green-600";
+                  groupSliderColors = ['#c8e6c9', '#43a047'];
+                }
+
+                const currentRange = scoreRanges[group] || [0, 1];
 
                 return (
-                  <label key={group} className="flex items-center gap-1.5 text-xs font-medium text-slate-600 cursor-pointer select-none hover:text-slate-900">
-                    <input
-                      type="checkbox"
-                      checked={visibleExplainers.has(group)}
-                      onChange={() => handleToggleExplainer(group)}
-                      className={`w-3.5 h-3.5 rounded border-slate-300 ${colorClass}`}
-                    />
-                    {group}
-                  </label>
-                );
+                  <div key={group} className="flex items-center gap-2 h-6 w-full">
+                    <span className={`text-[9px] font-bold w-12 text-right shrink-0 ${colorClass}`}>{group.replace('Gemini-flash', 'Gemini').replace('GPT-4o-mini', 'GPT-4o')}</span>
+                    <span className="text-[8px] text-slate-400 font-mono w-6 text-right">{currentRange[0].toFixed(2)}</span>
+                    <div className="flex-1 min-w-0 pt-1">
+                      <RangeSlider
+                        min={0}
+                        max={1}
+                        value={currentRange}
+                        onChange={(newRange) => {
+                          setScoreRanges(prev => ({
+                            ...prev,
+                            [group]: newRange
+                          }));
+                        }}
+                        colors={groupSliderColors}
+                        hideLabels={true}
+                      />
+                    </div>
+                    <span className="text-[8px] text-slate-400 font-mono w-6 text-left">{currentRange[1].toFixed(2)}</span>
+                  </div>
+                )
               })}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 px-4 h-full flex-1 justify-center hover:bg-slate-50 transition-colors">
-            <span className="text-xs font-extrabold text-slate-700 tracking-tight">Select Score Metric</span>
-            <div className="flex items-center gap-3">
-              {[
-                { id: 'score_detection', label: 'Detection' },
-                { id: 'score_embedding', label: 'Embedding' },
-                { id: 'score_fuzz', label: 'Fuzz' },
-              ].map(metric => (
-                <label key={metric.id} className="flex items-center gap-1.5 text-xs font-medium text-slate-600 cursor-pointer select-none hover:text-slate-900">
-                  <input
-                    type="radio"
-                    name="colorMetricApp"
-                    value={metric.id}
-                    checked={colorMetric === metric.id}
-                    onChange={(e) => setColorMetric(e.target.value)}
-                    className="w-3.5 h-3.5 accent-blue-500"
-                  />
-                  {metric.label}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 px-4 h-full w-[340px] hover:bg-slate-50 transition-colors">
-            <span className="text-xs font-extrabold text-slate-700 tracking-tight whitespace-nowrap">Score Range</span>
-            <div className="flex-1 min-w-0">
-              <RangeSlider
-                min={0}
-                max={1}
-                value={scoreRange}
-                onChange={setScoreRange}
-                colors={sliderColors}
-              />
             </div>
           </div>
         </div>
@@ -253,8 +357,7 @@ function App() {
             visibleColors={visibleColors}
             toggleColor={toggleColor}
             colors={sliderColors}
-            range={scoreRange}
-            setRange={setScoreRange}
+
             getFeatureColor={getFeatureColor}
             getExplainerBaseColor={getExplainerBaseColor}
             explainerColorScale={getExplainerBaseColor}
@@ -270,8 +373,7 @@ function App() {
             visibleColors={visibleColors}
             toggleColor={toggleColor}
             colors={sliderColors}
-            range={scoreRange}
-            setRange={setScoreRange}
+
             getFeatureColor={getFeatureColor}
             explainerColorScale={getExplainerBaseColor}
             propsXDomain={globalXDomain}

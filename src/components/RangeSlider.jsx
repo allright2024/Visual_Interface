@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 
-const RangeSlider = ({ min, max, value, onChange, colors }) => {
+const RangeSlider = ({ min, max, value, onChange, colors, hideLabels = false }) => {
     const [isDragging, setIsDragging] = useState(null);
     const containerRef = useRef(null);
 
@@ -57,10 +57,12 @@ const RangeSlider = ({ min, max, value, onChange, colors }) => {
 
     return (
         <div className="w-full flex flex-col items-center select-none">
-            <div className="flex justify-between w-full text-[10px] text-slate-500 font-bold mb-1 px-1 py-0 -mt-2">
-                <span>{typeof currentMin === 'number' ? currentMin.toFixed(2) : min} (Low)</span>
-                <span>{typeof currentMax === 'number' ? currentMax.toFixed(2) : max} (High)</span>
-            </div>
+            {!hideLabels && (
+                <div className="flex justify-between w-full text-[10px] text-slate-500 font-bold mb-1 px-1 py-0 -mt-2">
+                    <span>{typeof currentMin === 'number' ? currentMin.toFixed(2) : min} (Low)</span>
+                    <span>{typeof currentMax === 'number' ? currentMax.toFixed(2) : max} (High)</span>
+                </div>
+            )}
 
             <div
                 ref={containerRef}
